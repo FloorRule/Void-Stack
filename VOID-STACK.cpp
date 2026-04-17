@@ -41,21 +41,61 @@ int main() {
         return -1;
     }
 
+    glEnable(GL_DEPTH_TEST);
+
     // 5. Tell OpenGL the size of the rendering window
     glViewport(0, 0, 1200, 800);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 
     // 6. Shaders
-    Shader ourShader("D:\\project2\\VOID-STACK\\shaders\\shaderVS.txt", "D:\\project2\\VOID-STACK\\shaders\\shaderFS.txt");
+    Shader ourShader(SHADER_DIR "shaderVS.txt", SHADER_DIR "shaderFS.txt");
     ourShader.use();
     // 7. Geometry
 
     float vertices[] = {
         // position     |    // color
-        0.5f,-0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom right
-        -0.5f,-0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // bottom left
-        0.0f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f // top
+        -0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
+
+        -0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f, 1.0f,
+
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 1.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, 1.0f,
+
+        -0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 1.0f
     };
 
     unsigned int VAO;
@@ -86,20 +126,31 @@ int main() {
         // Rendering Commands
         // Deep Space Navy Color (0.05, 0.05, 0.1)
         glClearColor(0.05f, 0.05f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         ourShader.use();
 
-        glm::mat4 trans = glm::mat4(1.0f);
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
 
-        trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+        glm::mat4 view = glm::mat4(1.0f);
+        
+        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
 
-        trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5));
+        glm::mat4 projection;
+        projection = glm::perspective(glm::radians(45.0f), 1200.0f / 800.0f, 0.1f, 100.0f);
 
-        ourShader.setMat4("transform", trans);
+        int modelLoc = glGetUniformLocation(ourShader.ID, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+        int viewLoc = glGetUniformLocation(ourShader.ID, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+        int projectionLoc = glGetUniformLocation(ourShader.ID, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // Swap buffers and poll IO events
         glfwSwapBuffers(window);

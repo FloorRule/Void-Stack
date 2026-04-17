@@ -15,6 +15,9 @@ find_package(glm CONFIG REQUIRED)
 # 2. Create the executable ONCE (Using your actual files)
 add_executable(VOID-STACK "VOID-STACK.cpp" "VOID-STACK.h" "Shader.h" "Shader.cpp")
 
+# Shader folder path
+target_compile_definitions(VOID-STACK PRIVATE SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/shaders/")
+
 # Set C++ Standard
 set_property(TARGET VOID-STACK PROPERTY CXX_STANDARD 20)
 
