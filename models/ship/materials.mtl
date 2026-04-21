@@ -1,0 +1,18 @@
+# Made in Blockbench 5.1.3
+newmtl m_b4a37fed-f014-a311-c158-db9a66706c5a
+map_Kd body-texture.png
+newmtl m_f4c94ada-bccf-a6b5-2bf0-4c7663a1085b
+map_Kd burner-texture2.png
+newmtl m_b09412c5-5499-26ce-b7aa-7b1f8aafb361
+map_Kd chuck-wing-texture.png
+newmtl m_dd644eaa-f698-d3ea-2763-d324bfcff2cc
+map_Kd inner-wing1-texture.png
+newmtl m_b1b1046c-ae94-d724-d6d1-77c2fd8ce76a
+map_Kd right-wing-texture.png
+newmtl m_9ccbcfd8-f55e-06b3-06b0-37f761a99c15
+map_Kd burner-texture1.png
+newmtl m_5c8b0c5e-7da7-8538-2979-2ef4eddb4bfa
+map_Kd left-wing-texture.png
+newmtl m_37be2367-b2fe-034c-2668-5be83981cb8c
+map_Kd inner-wing2-texture.png
+newmtl none
