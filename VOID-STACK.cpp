@@ -39,6 +39,10 @@ float yaw = 0.0f;
 float pitch = 0.0f;
 float roll = 0.0f;
 
+// Orientation
+glm::quat shipOrientation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+float visualBank = 0.0f;
+
 // Flight Control
 float mouseX = 0.0f, mouseY = 0.0f;
 float leashRange = 250.0f;
@@ -258,12 +262,13 @@ int main() {
             // Camera position
             shipModel = glm::translate(shipModel, cameraPos);
 
-            // Rotate the ship 
-            shipModel = glm::rotate(shipModel, glm::radians(-yaw - 90.0f), glm::vec3(0, 1, 0));
-            shipModel = glm::rotate(shipModel, glm::radians(pitch), glm::vec3(1, 0, 0));
-            shipModel = glm::rotate(shipModel, glm::radians(roll), glm::vec3(0, 0, 1));
+            // Apply the physical orientation of the ship
+            shipModel *= glm::mat4_cast(shipOrientation);
 
-            // Adjust slightly down/forward so the camera is in the cockpit
+            // Apply the visual bank
+            shipModel = glm::rotate(shipModel, glm::radians(visualBank), glm::vec3(0, 0, 1));
+
+            // Adjust for model offset
             shipModel = glm::translate(shipModel, glm::vec3(0.0f, -2.0f, 1.8f));
         }
         else {
@@ -296,6 +301,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 void processInput(GLFWwindow* window) {
     const float cameraSpeed = 2.5f * deltaTime;
 
+    const float rollSpeed = 2.0f * deltaTime;
+
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
@@ -319,6 +326,16 @@ void processInput(GLFWwindow* window) {
 
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
+        glm::quat rollQuat = glm::angleAxis(rollSpeed * deltaTime, glm::vec3(0, 0, 1));
+        shipOrientation = shipOrientation * rollQuat;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+        glm::quat rollQuat = glm::angleAxis(rollSpeed * deltaTime, glm::vec3(0, 0, 1));
+        shipOrientation = shipOrientation * rollQuat;
+    }
 }
 
 // Handle mouse movment
@@ -383,9 +400,6 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
         dirX *= sensitivity;
         dirY *= sensitivity;
 
-        if (pitch > 88.9f) pitch = 88.8f;
-        if (pitch < -88.9f) pitch = -88.8f;
-
         // Limits the mouse position
         float distance = sqrt(dirX * dirX + dirY * dirY);
         if (distance > leashRange) {
@@ -404,30 +418,26 @@ void update_ship_rotation(float deltaTime) {
     float inputX = (abs(mouseX) < deadzone) ? 0.0f : mouseX;
     float inputY = (abs(mouseY) < deadzone) ? 0.0f : mouseY;
 
-    float rotationSpeed = 60.0f;
-    yaw += inputX * rotationSpeed * deltaTime;
-    pitch -= inputY * rotationSpeed * deltaTime;
+    float rotationSpeed = 2.0f; // Radians
 
-    // Banking
-    float targetRoll = -inputX * 45.0f;
-    roll = glm::mix(roll, targetRoll, deltaTime * 2.0f);
+    // Calculate local rotatio
+    glm::quat pitchQuat = glm::angleAxis(-inputY * rotationSpeed * deltaTime, glm::vec3(1, 0, 0));
+    glm::quat yawQuat = glm::angleAxis(-inputX * rotationSpeed * deltaTime, glm::vec3(0, 1, 0));
 
-    // Auto-center the "leash"
-    //mouseX = glm::mix(mouseX, 0.0f, deltaTime * autoCenterSpeed);
-    //mouseY = glm::mix(mouseY, 0.0f, deltaTime * autoCenterSpeed);
+    // Combine with existing orientation
+    // ORDER MATTERS
+    shipOrientation = shipOrientation * pitchQuat * yawQuat;
+    shipOrientation = glm::normalize(shipOrientation); // Prevent "float creep" errors
 
-    // Calculate Front
-    glm::vec3 front;
-    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    front.y = sin(glm::radians(pitch));
-    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    cameraFront = glm::normalize(front);
+    // Visual Banking
+    float targetBank = -inputX * 35.0f;
+    visualBank = glm::mix(visualBank, targetBank, deltaTime * 5.0f);
 
-    // Temporary "Right" based on horizontal yaw to start
-    glm::vec3 worldUp = glm::vec3(0, 1, 0);
-    glm::vec3 right = glm::normalize(glm::cross(cameraFront, worldUp));
+    // Update Camera Vectors
+    cameraFront = shipOrientation * glm::vec3(0, 0, -1);
+    glm::vec3 shipUp = shipOrientation * glm::vec3(0, 1, 0);
 
-    // Rotate that Right vector by the Roll amount around the Front axis
-    glm::mat4 rollMat = glm::rotate(glm::mat4(1.0f), glm::radians(roll), cameraFront);
-    cameraUp = glm::normalize(glm::vec3(rollMat * glm::vec4(worldUp, 0.0f)));
+    // Bank tilt to the camera Up vector
+    glm::mat4 bankMat = glm::rotate(glm::mat4(1.0f), glm::radians(visualBank), cameraFront);
+    cameraUp = glm::vec3(bankMat * glm::vec4(shipUp, 0.0f));
 }
