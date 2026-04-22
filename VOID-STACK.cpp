@@ -40,7 +40,7 @@ float pitch = 0.0f;
 float roll = 0.0f;
 
 // Flight Control
-float mouseX = 0.0f, mouseY = 0.0f; 
+float mouseX = 0.0f, mouseY = 0.0f;
 float leashRange = 250.0f;
 float deadzone = 0.05f;
 float autoCenterSpeed = 3.0f;
@@ -53,7 +53,7 @@ int main() {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return -1;
     }
-    
+
     // 2. Configure GLFW (Setting OpenGL to version 3.3, Core Profile)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -136,7 +136,7 @@ int main() {
 
     unsigned int VAO;
     unsigned int VBO;
-    
+
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 
@@ -169,7 +169,7 @@ int main() {
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPosCallback(window, mouse_callback);
 
-    glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
+    glm::vec3 lightPos(10.0f, 1.0f, 10.0f);
 
     AssetManager::LoadModel("planet", MODEL_DIR "low-poly-sphere.obj");
     AssetManager::LoadModel("ship", MODEL_DIR "/Ship/Ship.obj");
@@ -217,15 +217,15 @@ int main() {
 
         // Matrixes
         glm::mat4 model = glm::mat4(1.0f);
+        glm::mat4 projection;
+        glm::mat4 view = glm::mat4(1.0f);
+
+        view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        projection = glm::perspective(glm::radians(45.0f), 1200.0f / 800.0f, 0.1f, 100.0f);
+        
+        // CUBE
         model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
         model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
-
-        glm::mat4 view = glm::mat4(1.0f);
-        
-        view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-
-        glm::mat4 projection;
-        projection = glm::perspective(glm::radians(45.0f), 1200.0f / 800.0f, 0.1f, 100.0f);
 
         ourShader.setMat4("model", model);
         ourShader.setMat4("view", view);
@@ -234,19 +234,20 @@ int main() {
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
+        // SUN
         ourLightShader.use();
         ourLightShader.setMat4("view", view);
         ourLightShader.setMat4("projection", projection);
 
         model = glm::mat4(1.0f);
         model = glm::translate(model, lightPos);
-        model = glm::scale(model, glm::vec3(0.2f));
+        model = glm::scale(model, glm::vec3(5.0f));
 
         ourLightShader.setMat4("model", model);
 
-        glBindVertexArray(lightVAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        AssetManager::GetModel("planet").Draw(ourLightShader);
 
+        // SHIP
         ourShader.use();
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
@@ -263,7 +264,7 @@ int main() {
             shipModel = glm::rotate(shipModel, glm::radians(roll), glm::vec3(0, 0, 1));
 
             // Adjust slightly down/forward so the camera is in the cockpit
-            shipModel = glm::translate(shipModel, glm::vec3(0.0f, -2.0f, 2.0f));
+            shipModel = glm::translate(shipModel, glm::vec3(0.0f, -2.0f, 1.8f));
         }
         else {
             shipModel = glm::translate(shipModel, glm::vec3(0.0f, 6.0f, 5.0f));
@@ -294,8 +295,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 // Handle key presses
 void processInput(GLFWwindow* window) {
     const float cameraSpeed = 2.5f * deltaTime;
-    // Speed of rolling
-    const float rollSpeed = 5.0f * deltaTime;
 
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
@@ -320,13 +319,6 @@ void processInput(GLFWwindow* window) {
 
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-
-    // Roll Controls
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-        roll += rollSpeed;
-
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-        roll -= rollSpeed;
 }
 
 // Handle mouse movment
@@ -386,7 +378,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
         float dirX = xpos - centerX;
         float dirY = ypos - centerY;
 
-        float sensitivity = 0.5f;
+        float sensitivity = 0.3f;
 
         dirX *= sensitivity;
         dirY *= sensitivity;
@@ -405,7 +397,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
         mouseX = dirX / leashRange;
         mouseY = dirY / leashRange; // Up is negative 
     }
-    
+
 }
 
 void update_ship_rotation(float deltaTime) {
@@ -421,7 +413,7 @@ void update_ship_rotation(float deltaTime) {
     roll = glm::mix(roll, targetRoll, deltaTime * 2.0f);
 
     // Auto-center the "leash"
-   // mouseX = glm::mix(mouseX, 0.0f, deltaTime * autoCenterSpeed);
+    //mouseX = glm::mix(mouseX, 0.0f, deltaTime * autoCenterSpeed);
     //mouseY = glm::mix(mouseY, 0.0f, deltaTime * autoCenterSpeed);
 
     // Calculate Front
