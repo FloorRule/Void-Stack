@@ -9,6 +9,9 @@
 #include <iostream>
 #include "Shader.h"
 #include "AssetManager.h"
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 
 // Function prototypes (We keep main clean)
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -20,7 +23,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void update_ship_rotation(float deltaTime);
 
 // Camera globals
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraPos = glm::vec3(10.0f, 0.0f, 10.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
@@ -51,6 +54,8 @@ float autoCenterSpeed = 3.0f;
 
 bool free_Cam = false;
 
+float fov = 45.0f;
+
 int main() {
     // 1. Initialize GLFW
     if (!glfwInit()) {
@@ -78,6 +83,18 @@ int main() {
         return -1;
     }
 
+    // ImGui setup
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
+
+    // Setup Style
+    ImGui::StyleColorsDark();
+
     glEnable(GL_DEPTH_TEST);
 
     // 5. Tell OpenGL the size of the rendering window
@@ -88,6 +105,8 @@ int main() {
     // 6. Shaders
     Shader ourShader(SHADER_DIR "shaderVS.txt", SHADER_DIR "shaderFS.txt");
     Shader ourLightShader(SHADER_DIR "lightShaderVS.txt", SHADER_DIR "lightShaderFS.txt");
+    Shader skyboxShader(SHADER_DIR "skyboxVS.txt", SHADER_DIR "skyboxFS.txt");
+
     ourShader.use();
     ourLightShader.use();
 
@@ -138,6 +157,51 @@ int main() {
         -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
     };
 
+    float skyboxVertices[] = {
+        // positions          
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+         1.0f,  1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f
+    };
+
     unsigned int VAO;
     unsigned int VBO;
 
@@ -168,14 +232,35 @@ int main() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
+
+    unsigned int skyboxVAO, skyboxVBO;
+    glGenVertexArrays(1, &skyboxVAO);
+
+    glGenBuffers(1, &skyboxVBO);
+    glBindVertexArray(skyboxVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
+    // Load the textures
+    std::vector<std::string> faces{
+        MODEL_DIR "skybox/right.png", MODEL_DIR "skybox/left.png", MODEL_DIR "skybox/top.png", MODEL_DIR "skybox/bottom.png", MODEL_DIR "skybox/front.png", MODEL_DIR "skybox/back.png"
+    };
+    unsigned int cubemapTexture = AssetManager::loadCubemap(faces);
+    
+
+
     glBindVertexArray(0);
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPosCallback(window, mouse_callback);
 
-    glm::vec3 lightPos(10.0f, 1.0f, 10.0f);
+    glm::vec3 lightPos(0.0f, 0.0f, 0.0f);
 
-    AssetManager::LoadModel("planet", MODEL_DIR "low-poly-sphere.obj");
+    AssetManager::LoadModel("planet", MODEL_DIR "Sphere.obj");
     AssetManager::LoadModel("ship", MODEL_DIR "/Ship/Ship.obj");
 
     // 8. The RENDER LOOP (The Heartbeat)
@@ -183,10 +268,24 @@ int main() {
         // Calculate per - frame time logic
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
+        glm::vec3 lastCameraPos = cameraPos;
         lastFrame = currentFrame;
+
+        // ImGUI init
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
 
         // Input
         processInput(window);
+
+        // UI
+        ImGui::Begin("Engine Stats");
+        ImGui::Text("Ship Speed: %.2f", glm::distance(lastCameraPos, cameraPos)/ deltaTime);
+        ImGui::Text("FOV: %.2f", fov);
+        ImGui::Text("FPS: %.1f", io.Framerate);
+        ImGui::End();
+
 
         // Rendering Commands
         // Deep Space Navy Color (0.05, 0.05, 0.1)
@@ -225,7 +324,7 @@ int main() {
         glm::mat4 view = glm::mat4(1.0f);
 
         view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-        projection = glm::perspective(glm::radians(45.0f), 1200.0f / 800.0f, 0.1f, 100.0f);
+        projection = glm::perspective(glm::radians(fov), 1200.0f / 800.0f, 0.1f, 1000.0f);
         
         // CUBE
         model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
@@ -280,12 +379,34 @@ int main() {
 
         AssetManager::GetModel("ship").Draw(ourShader);
 
+
+        glDepthFunc(GL_LEQUAL);  // Change depth function
+        skyboxShader.use();
+
+        // Remove translation
+        view = glm::mat4(glm::mat3(glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp)));
+        skyboxShader.setMat4("view", view);
+        skyboxShader.setMat4("projection", projection);
+
+        glBindVertexArray(skyboxVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glDepthFunc(GL_LESS);
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         // Swap buffers and poll IO events
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
     // 9. Cleanup
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glfwTerminate();
@@ -299,9 +420,24 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 
 // Handle key presses
 void processInput(GLFWwindow* window) {
-    const float cameraSpeed = 2.5f * deltaTime;
+    const float baseSpeed = 1.5f;
+    const float maxBoostSpeed = 25.0f;
+    const float maxSpeed = 10.0f;
+    const float accelRate = 2.0f;
 
     const float rollSpeed = 2.0f * deltaTime;
+    static float currentForwardSpeed = baseSpeed;
+
+    float targetSpeed = baseSpeed;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+        targetSpeed = maxBoostSpeed;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        targetSpeed = maxSpeed;
+
+    currentForwardSpeed = glm::mix(currentForwardSpeed, targetSpeed, deltaTime * accelRate);
+    fov = glm::mix(45.0f, 50.0f * (currentForwardSpeed / baseSpeed), deltaTime);
+
 
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
@@ -315,17 +451,18 @@ void processInput(GLFWwindow* window) {
         b_pressed = false;
     }
 
+
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        cameraPos += cameraSpeed * cameraFront;
+    {
+        cameraPos += (currentForwardSpeed * deltaTime) * cameraFront;
+    }
+        
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        cameraPos -= cameraSpeed * cameraFront;
-
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    {
+        cameraPos -= (currentForwardSpeed * deltaTime) * cameraFront;
+    }
+        
 
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
         glm::quat rollQuat = glm::angleAxis(rollSpeed * deltaTime, glm::vec3(0, 0, 1));
@@ -409,7 +546,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
             glfwSetCursorPos(window, centerX + dirX, centerY + dirY);
         }
         mouseX = dirX / leashRange;
-        mouseY = dirY / leashRange; // Up is negative 
+        mouseY = dirY / leashRange; // Up negative 
     }
 
 }
@@ -425,9 +562,8 @@ void update_ship_rotation(float deltaTime) {
     glm::quat yawQuat = glm::angleAxis(-inputX * rotationSpeed * deltaTime, glm::vec3(0, 1, 0));
 
     // Combine with existing orientation
-    // ORDER MATTERS
     shipOrientation = shipOrientation * pitchQuat * yawQuat;
-    shipOrientation = glm::normalize(shipOrientation); // Prevent "float creep" errors
+    shipOrientation = glm::normalize(shipOrientation);
 
     // Visual Banking
     float targetBank = -inputX * 35.0f;
