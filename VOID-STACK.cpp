@@ -23,7 +23,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void update_ship_rotation(float deltaTime);
 
 // Camera globals
-glm::vec3 cameraPos = glm::vec3(10.0f, 0.0f, 10.0f);
+glm::vec3 cameraPos = glm::vec3(30.0f, 0.0f, 30.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
@@ -258,8 +258,9 @@ int main() {
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPosCallback(window, mouse_callback);
 
-    glm::vec3 lightPos(0.0f, 0.0f, 0.0f);
+    glm::vec3 lightPos(0.0f, -10.0f, 0.0f);
 
+    AssetManager::LoadModel("sun", MODEL_DIR "Sphere.obj");
     AssetManager::LoadModel("planet", MODEL_DIR "Sphere.obj");
     AssetManager::LoadModel("ship", MODEL_DIR "/Ship/Ship.obj");
 
@@ -344,11 +345,26 @@ int main() {
 
         model = glm::mat4(1.0f);
         model = glm::translate(model, lightPos);
-        model = glm::scale(model, glm::vec3(5.0f));
+        model = glm::scale(model, glm::vec3(20.0f));
 
         ourLightShader.setMat4("model", model);
 
-        AssetManager::GetModel("planet").Draw(ourLightShader);
+        AssetManager::GetModel("sun").Draw(ourLightShader);
+
+        // Planet
+        ourShader.use();
+        ourShader.setMat4("view", view);
+        ourShader.setMat4("projection", projection);
+
+        model = glm::mat4(1.0f);
+        model = glm::rotate(model, (float)glfwGetTime() * 0.2f, glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(50.0f, 0.0f, 0.0f));
+        model = glm::rotate(model, (float)glfwGetTime() * 1.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(5.0f));
+
+        ourShader.setMat4("model", model);
+
+        AssetManager::GetModel("planet").Draw(ourShader);
 
         // SHIP
         ourShader.use();
